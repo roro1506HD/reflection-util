@@ -13,6 +13,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -210,7 +211,7 @@ public class ObfuscationHelper {
             MemoryMappingTree tree = new MemoryMappingTree();
             Set<ClassMapping> classes = new HashSet<>();
 
-            MappingReader.read(new InputStreamReader(mappingsInputStream, StandardCharsets.UTF_8), MappingFormat.TINY_2, tree);
+            MappingReader.read(new InputStreamReader(mappingsInputStream, StandardCharsets.UTF_8), this.getMappingFormat(), tree);
 
             for (MappingTree.ClassMapping classMapping : tree.getClasses()) {
                 Set<Mapping> methods = new HashSet<>();
@@ -218,25 +219,25 @@ public class ObfuscationHelper {
 
                 for (MappingTree.MethodMapping methodMapping : classMapping.getMethods()) {
                     methods.add(new Mapping(
-                            methodMapping.getName(ObfuscationHelper.SPIGOT_NAMESPACE),
-                            methodMapping.getName(ObfuscationHelper.MOJANG_PLUS_YARN_NAMESPACE),
-                            methodMapping.getDesc(ObfuscationHelper.SPIGOT_NAMESPACE),
-                            methodMapping.getDesc(ObfuscationHelper.MOJANG_PLUS_YARN_NAMESPACE)
+                            Objects.requireNonNull(methodMapping.getName(ObfuscationHelper.SPIGOT_NAMESPACE)),
+                            Objects.requireNonNull(methodMapping.getName(ObfuscationHelper.MOJANG_PLUS_YARN_NAMESPACE)),
+                            Objects.requireNonNull(methodMapping.getDesc(ObfuscationHelper.SPIGOT_NAMESPACE)),
+                            Objects.requireNonNull(methodMapping.getDesc(ObfuscationHelper.MOJANG_PLUS_YARN_NAMESPACE))
                     ));
                 }
 
                 for (MappingTree.FieldMapping fieldMapping : classMapping.getFields()) {
                     fields.add(new Mapping(
-                            fieldMapping.getName(ObfuscationHelper.SPIGOT_NAMESPACE),
-                            fieldMapping.getName(ObfuscationHelper.MOJANG_PLUS_YARN_NAMESPACE),
+                            Objects.requireNonNull(fieldMapping.getName(ObfuscationHelper.SPIGOT_NAMESPACE)),
+                            Objects.requireNonNull(fieldMapping.getName(ObfuscationHelper.MOJANG_PLUS_YARN_NAMESPACE)),
                             null,
                             null
                     ));
                 }
 
                 classes.add(new ClassMapping(
-                        classMapping.getName(ObfuscationHelper.SPIGOT_NAMESPACE).replace('/', '.'),
-                        classMapping.getName(ObfuscationHelper.MOJANG_PLUS_YARN_NAMESPACE).replace('/', '.'),
+                        Objects.requireNonNull(classMapping.getName(ObfuscationHelper.SPIGOT_NAMESPACE)).replace('/', '.'),
+                        Objects.requireNonNull(classMapping.getName(ObfuscationHelper.MOJANG_PLUS_YARN_NAMESPACE)).replace('/', '.'),
 
                         this.toMap(methods, mapping -> mapping.obfName() + mapping.obfDescription()),
                         this.toMap(methods, mapping -> mapping.mojangName() + mapping.mojangDescription()),
@@ -251,6 +252,16 @@ public class ObfuscationHelper {
             ObfuscationHelper.LOGGER.log(Level.SEVERE, "Failed to load mappings for reflection utils:", ex);
             return null;
         }
+    }
+
+    private @NotNull MappingFormat getMappingFormat() {
+        for (MappingFormat value : MappingFormat.values()) {
+            if (value.name().contains("TINY_2")) {
+                return value;
+            }
+        }
+
+        throw new IllegalStateException("Could not find TINY2 format in MappingFormat enum");
     }
 
     private <T> @NotNull Map<String, T> toMap(@NotNull Set<T> mappings, @NotNull Function<T, String> keyMapper) {

@@ -95,6 +95,10 @@ public class ReflectionUtil {
         return new FieldAccessor(clazz, field, ReflectionUtil.UNSAFE);
     }
 
+    public static @NotNull FieldAccessor getFieldAccessor(@NotNull Class<?> clazz, @NotNull Field field) {
+        return new FieldAccessor(clazz, field, ReflectionUtil.UNSAFE);
+    }
+
     public static @NotNull FieldAccessor getFieldAccessor(@NotNull String className, @NotNull String fieldName) {
         Class<?> clazz = ReflectionUtil.getClass(className);
 
