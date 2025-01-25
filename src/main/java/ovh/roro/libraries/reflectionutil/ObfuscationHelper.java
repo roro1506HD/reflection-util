@@ -1,16 +1,14 @@
 package ovh.roro.libraries.reflectionutil;
 
 import com.google.common.collect.ImmutableMap;
-import net.fabricmc.mappingio.MappingReader;
-import net.fabricmc.mappingio.format.MappingFormat;
-import net.fabricmc.mappingio.tree.MappingTree;
-import net.fabricmc.mappingio.tree.MemoryMappingTree;
+import io.papermc.paper.util.MappingEnvironment;
+import io.papermc.paper.util.StringPool;
+import net.neoforged.srgutils.IMappingFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -22,8 +20,6 @@ import java.util.logging.Logger;
 public class ObfuscationHelper {
 
     private static final @NotNull Logger LOGGER = Logger.getLogger("ObfuscationHelper");
-    private static final @NotNull String MOJANG_PLUS_YARN_NAMESPACE = "mojang+yarn";
-    private static final @NotNull String SPIGOT_NAMESPACE = "spigot";
 
     private static final @NotNull Map<Class<?>, String> KNOWN_SIGNATURES = Map.of(
             Boolean.TYPE, "Z",
@@ -202,42 +198,41 @@ public class ObfuscationHelper {
     }
 
     private @Nullable Set<ClassMapping> loadMappingsIfPresent() {
-        try (InputStream mappingsInputStream = Class.forName("io.papermc.paper.util.ObfHelper", true, Thread.currentThread().getContextClassLoader()).getClassLoader().getResourceAsStream("META-INF/mappings/reobf.tiny")) {
-            if (mappingsInputStream == null) {
-                ObfuscationHelper.LOGGER.severe(() -> "Failed to load mappings for reflection utils: mappings not found");
-                return null;
-            }
+        if (!MappingEnvironment.hasMappings()) {
+            ObfuscationHelper.LOGGER.severe(() -> "Failed to load mappings for reflection utils: mappings not found");
+            return null;
+        }
 
-            MemoryMappingTree tree = new MemoryMappingTree();
+        try (InputStream mappingsInputStream = MappingEnvironment.mappingsStream()) {
+            IMappingFile mappings = IMappingFile.load(mappingsInputStream); // Mappings are mojang->spigot
             Set<ClassMapping> classes = new HashSet<>();
+            StringPool pool = new StringPool();
 
-            MappingReader.read(new InputStreamReader(mappingsInputStream, StandardCharsets.UTF_8), this.getMappingFormat(), tree);
-
-            for (MappingTree.ClassMapping classMapping : tree.getClasses()) {
+            for (IMappingFile.IClass cls : mappings.getClasses()) {
                 Set<Mapping> methods = new HashSet<>();
                 Set<Mapping> fields = new HashSet<>();
 
-                for (MappingTree.MethodMapping methodMapping : classMapping.getMethods()) {
+                for (IMappingFile.IMethod methodMapping : cls.getMethods()) {
                     methods.add(new Mapping(
-                            Objects.requireNonNull(methodMapping.getName(ObfuscationHelper.SPIGOT_NAMESPACE)),
-                            Objects.requireNonNull(methodMapping.getName(ObfuscationHelper.MOJANG_PLUS_YARN_NAMESPACE)),
-                            Objects.requireNonNull(methodMapping.getDesc(ObfuscationHelper.SPIGOT_NAMESPACE)),
-                            Objects.requireNonNull(methodMapping.getDesc(ObfuscationHelper.MOJANG_PLUS_YARN_NAMESPACE))
+                            pool.string(Objects.requireNonNull(methodMapping.getMapped())),
+                            pool.string(Objects.requireNonNull(methodMapping.getOriginal())),
+                            pool.string(Objects.requireNonNull(methodMapping.getMappedDescriptor())),
+                            pool.string(Objects.requireNonNull(methodMapping.getDescriptor()))
                     ));
                 }
 
-                for (MappingTree.FieldMapping fieldMapping : classMapping.getFields()) {
+                for (IMappingFile.IField field : cls.getFields()) {
                     fields.add(new Mapping(
-                            Objects.requireNonNull(fieldMapping.getName(ObfuscationHelper.SPIGOT_NAMESPACE)),
-                            Objects.requireNonNull(fieldMapping.getName(ObfuscationHelper.MOJANG_PLUS_YARN_NAMESPACE)),
+                            Objects.requireNonNull(field.getMapped()),
+                            Objects.requireNonNull(field.getOriginal()),
                             null,
                             null
                     ));
                 }
 
                 classes.add(new ClassMapping(
-                        Objects.requireNonNull(classMapping.getName(ObfuscationHelper.SPIGOT_NAMESPACE)).replace('/', '.'),
-                        Objects.requireNonNull(classMapping.getName(ObfuscationHelper.MOJANG_PLUS_YARN_NAMESPACE)).replace('/', '.'),
+                        Objects.requireNonNull(cls.getMapped()).replace('/', '.'),
+                        Objects.requireNonNull(cls.getOriginal()).replace('/', '.'),
 
                         this.toMap(methods, mapping -> mapping.obfName() + mapping.obfDescription()),
                         this.toMap(methods, mapping -> mapping.mojangName() + mapping.mojangDescription()),
@@ -248,20 +243,10 @@ public class ObfuscationHelper {
             }
 
             return Set.copyOf(classes);
-        } catch (Exception ex) {
+        } catch (final IOException ex) {
             ObfuscationHelper.LOGGER.log(Level.SEVERE, "Failed to load mappings for reflection utils:", ex);
             return null;
         }
-    }
-
-    private @NotNull MappingFormat getMappingFormat() {
-        for (MappingFormat value : MappingFormat.values()) {
-            if (value.name().contains("TINY_2")) {
-                return value;
-            }
-        }
-
-        throw new IllegalStateException("Could not find TINY2 format in MappingFormat enum");
     }
 
     private <T> @NotNull Map<String, T> toMap(@NotNull Set<T> mappings, @NotNull Function<T, String> keyMapper) {
