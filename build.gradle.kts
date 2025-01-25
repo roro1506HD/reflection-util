@@ -1,11 +1,11 @@
 plugins {
     `java-library`
     `maven-publish`
-    id("io.papermc.paperweight.userdev") version "1.7.1"
+    id("io.papermc.paperweight.userdev") version "2.0.0-beta.14"
 }
 
 group = "ovh.roro.libraries"
-version = "1.21"
+version = "1.21.4"
 
 repositories {
     mavenLocal()
@@ -20,7 +20,7 @@ java {
 }
 
 dependencies {
-    paperweight.paperDevBundle("1.21-R0.1-SNAPSHOT")
+    paperweight.paperDevBundle("1.21.4-R0.1-SNAPSHOT")
 }
 
 // Configure reobfJar to run when invoking the build task
@@ -63,7 +63,7 @@ publishing {
     repositories {
         maven {
             name = "roro"
-            url = uri("https://repo.roro.ovh/artifactory/libraries/")
+            url = uri("https://repo.roro.ovh/repository/libraries/")
 
             credentials(PasswordCredentials::class)
         }
