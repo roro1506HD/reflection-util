@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "ovh.roro.libraries"
-version = "1.21.8"
+version = "1.21.9-rc1"
 
 repositories {
     mavenLocal()
@@ -27,11 +27,6 @@ dependencies {
     paperweight.paperDevBundle("1.21.9-rc1-R0.1-SNAPSHOT")
 }
 
-// Configure reobfJar to run when invoking the build task
-tasks.assemble {
-    dependsOn(tasks.reobfJar)
-}
-
 tasks.compileJava {
     options.encoding = Charsets.UTF_8.name() // We want UTF-8 for everything
 
@@ -51,10 +46,7 @@ tasks.processResources {
 publishing {
     publications {
         create<MavenPublication>("maven") {
-            artifact(tasks.reobfJar)
-            artifact(tasks.jar) {
-                classifier = "moj-mapped"
-            }
+            artifact(tasks.jar)
             artifact(tasks["javadocJar"]) {
                 classifier = "javadoc"
             }
