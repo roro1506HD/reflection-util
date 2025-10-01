@@ -8,11 +8,8 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.Objects;
 
 public class ReflectionUtil {
-
-    public static final @NotNull ObfuscationHelper OBFUSCATION_HELPER = new ObfuscationHelper();
 
     private static final @NotNull MethodHandles.Lookup LOOKUP;
     private static final @NotNull Unsafe UNSAFE;
@@ -38,9 +35,7 @@ public class ReflectionUtil {
 
     public static @NotNull Class<?> getClass(@NotNull String classPath) {
         try {
-            String obfClassName = ReflectionUtil.OBFUSCATION_HELPER.getObfClassName(classPath);
-
-            return Class.forName(Objects.requireNonNullElse(obfClassName, classPath));
+            return Class.forName(classPath);
         } catch (Exception ex) {
             throw new IllegalArgumentException("Could not find class", ex);
         }
@@ -48,7 +43,7 @@ public class ReflectionUtil {
 
     public static @NotNull Field getField(@NotNull Class<?> clazz, @NotNull String fieldName) {
         try {
-            Field field = clazz.getDeclaredField(ReflectionUtil.OBFUSCATION_HELPER.getObfFieldName(clazz, fieldName));
+            Field field = clazz.getDeclaredField(fieldName);
             field.setAccessible(true);
 
             return field;
@@ -59,12 +54,7 @@ public class ReflectionUtil {
 
     public static @NotNull Method getMethod(@NotNull Class<?> clazz, @NotNull String methodName, @NotNull Class<?> @NotNull ... params) {
         try {
-            Class<?>[] args = new Class<?>[params.length - 1];
-            Class<?> returnType = params[params.length - 1];
-
-            System.arraycopy(params, 0, args, 0, args.length);
-
-            Method method = clazz.getDeclaredMethod(ReflectionUtil.OBFUSCATION_HELPER.getObfMethodName(clazz, methodName, args, returnType), args);
+            Method method = clazz.getDeclaredMethod(methodName, params);
             method.setAccessible(true);
 
             return method;
